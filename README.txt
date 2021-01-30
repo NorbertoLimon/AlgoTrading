@@ -1,0 +1,2 @@
+Note: Financial Data Used in this demonstration is purely ficticious, random data gathered through the use of IEXCloud's Sandbox API.
+For real-world applications, you will need to set up an account to access the paid version of the api which provides accurate historical data
