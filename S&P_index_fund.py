@@ -6,50 +6,27 @@ import pandas as pd
 import requests
 import math
 import xlsxwriter
-
+import helpers
 from secrets import SANDBOX_API_KEY
 
-# Web Scraping the S&P 500 from Wikipedia
-import urllib.request as request
-from bs4 import BeautifulSoup
-
-def getConstituents():
-    # URL request, URL opener, read content
-    req = request.Request('http://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-    opener = request.urlopen(req)
-    content = opener.read().decode() # Convert bytes to UTF-8
-
-    # take the UTF-8 content and turn it into a soup
-    soup = BeautifulSoup(content, features="html5lib")
-    # take the soup and gather the tables
-    tables = soup.find_all('table') 
-    # the HTML table we actually need is tables[0]
-    external_class = tables[0].findAll('a', {'class':'external text'})
-    tickers = []
-    for ext in external_class:
-        if not 'reports' in ext:
-            tickers.append(ext.string)
-    return tickers
-
-tickers = getConstituents()
+### Part 0: Web Scraping the S&P 500 from Wikipedia ###
+tickers = helpers.getConstituents() # Web Scraping
 ticker_array = np.array(tickers)
 ticker_df = pd.DataFrame(ticker_array) # array of stock tickers
-ticker_df.to_csv('sp_500_stocks.csv')
+ticker_df.to_csv('sp_500_stocks.csv') # load it as a csv
 
 ### PART 1: Single-Stock Setup ### -----------------------------------------------------------------------------------------------------------------------------------------
-
-# Using the sandbox base url for testing
 symbol = 'AAPL'
-api_url = f'https://sandbox.iexapis.com/stable/stock/{symbol}/quote/?token={SANDBOX_API_KEY}'
 columns = ['Ticker Symbol', 'Stock Price', 'Market Cap', '# Shares to Buy']
 df = pd.DataFrame(columns=columns)
+api_url = f'https://sandbox.iexapis.com/stable/stock/{symbol}/quote/?token={SANDBOX_API_KEY}' # Using the sandbox base url for testing
 data = requests.get(api_url).json()
 price = data['latestPrice']
 market_cap = data['marketCap']
 df.append(pd.Series([symbol, price, market_cap, 'N/A'], index=columns), ignore_index=True)
 df.head()
-### PART 2: LOOPING ### ----------------------------------------------------------------------------------------------------------------------------------------------------
 
+### PART 2: LOOPING ### ----------------------------------------------------------------------------------------------------------------------------------------------------
 df = pd.DataFrame(columns=columns)
 for stock in ticker_df[0]:
     api_url = f'https://sandbox.iexapis.com/stable/stock/{stock}/quote/?token={SANDBOX_API_KEY}'
@@ -57,23 +34,11 @@ for stock in ticker_df[0]:
     df = df.append(pd.Series([stock, stock_data['latestPrice'], stock_data['marketCap'], 'N/A'], index=columns), ignore_index=True)
 
 ### PART 3: BATCH API CALLS ------------------------------------------------------------------------------------------------------------------------------------------------
-
-def segments(lst, num):
-    """Yields lst as segments of size num"""
-    for i in range(0, len(lst), num):
-        yield lst[i:i + num]
-
 '''Prints the stock symbols inn segments of up to 100 stocks each segment'''
-# List of 6 segments (lists) of length: 100, 100, 100, 100, 100, 5
-symbol_groups = list(segments(ticker_df[0], 100))
-# list of symbols per segment
-symbol_strings = []
-
-# for each segment:
-#   100 elements are comma delimited and joined together as one string; append the 6 strings
-for i in range(0, len(symbol_groups)):
-    symbol_strings.append(','.join(symbol_groups[i]))
-#print(symbol_strings)
+symbol_groups = list(helpers.segments(ticker_df[0], 100)) # List of 6 segments (lists) of length: 100, 100, 100, 100, 100, 5
+symbol_strings = [] # list of symbols per segment
+for i in range(0, len(symbol_groups)): # for each segment:
+    symbol_strings.append(','.join(symbol_groups[i])) # 100 elements are comma delimited and joined together as one string; append the 6 strings
 
 final_df = pd.DataFrame(columns=columns)
 for symbol_string in symbol_strings:
@@ -92,12 +57,9 @@ for symbol_string in symbol_strings:
             index=columns),
             ignore_index=True
         )
-final_df
-
-len(symbol_groups) # just a sanity check
+# len(symbol_groups) # sanity check
 
 ### PART 4: Calculating # Shares to Buy ### --------------------------------------------------------------------------------------------------------------------------------
-
 portfolio_size = input('Enter the value of your portfolio: ')
 flag = False
 while(flag==False):
