@@ -1,4 +1,4 @@
-# Credit to Nick Mccullum and Code Academy for most of the source; condensed version for batch api calls in Python.
+# Credit to Nick Mccullum and Code Academy for much of the source; condensed for python
 # Source: https://www.youtube.com/watch?v=xfzGZB4HhEE&t=5924s
 
 import numpy as np
@@ -9,27 +9,17 @@ import xlsxwriter
 import helpers
 from secrets import SANDBOX_API_KEY
 
-### Part 0: Web Scraping the S&P 500 from Wikipedia ###
+### Part 1: Web Scraping the S&P 500 from Wikipedia ###
 tickers = helpers.getConstituents() # Web Scraping
 ticker_array = np.array(tickers)
 ticker_df = pd.DataFrame(ticker_array) # array of stock tickers
 ticker_df.to_csv('sp_500_stocks.csv') # load it as a csv
 
-### PART 1: Single-Stock Setup ### -----------------------------------------------------------------------------------------------------------------------------------------
-symbol = 'AAPL'
+### PART 2: LOOPING OVER STOCK SYMBOLS OF THE S&P 500 ### ----------------------------------------------------------------------------------------------------------------------------------------------------
 columns = ['Ticker Symbol', 'Stock Price', 'Market Cap', '# Shares to Buy']
 df = pd.DataFrame(columns=columns)
-api_url = f'https://sandbox.iexapis.com/stable/stock/{symbol}/quote/?token={SANDBOX_API_KEY}' # Using the sandbox base url for testing
-data = requests.get(api_url).json()
-price = data['latestPrice']
-market_cap = data['marketCap']
-df.append(pd.Series([symbol, price, market_cap, 'N/A'], index=columns), ignore_index=True)
-df.head()
-
-### PART 2: LOOPING ### ----------------------------------------------------------------------------------------------------------------------------------------------------
-df = pd.DataFrame(columns=columns)
 for stock in ticker_df[0]:
-    api_url = f'https://sandbox.iexapis.com/stable/stock/{stock}/quote/?token={SANDBOX_API_KEY}'
+    api_url = f'https://sandbox.iexapis.com/stable/stock/{stock}/quote/?token={SANDBOX_API_KEY}' # Using the sandbox base url for testing
     stock_data = requests.get(api_url).json()
     df = df.append(pd.Series([stock, stock_data['latestPrice'], stock_data['marketCap'], 'N/A'], index=columns), ignore_index=True)
 
@@ -65,15 +55,11 @@ flag = False
 while(flag==False):
     try:
         val = float(portfolio_size)
-        #vprint('Success!')
         flag=True
     except(ValueError):
-        # print('Invalid input.Please specify a number value')
         portfolio_size = input('Enter the value of your portfolio: ')
-
 # position size = how much money you are going to invest in each stock
 position_size = val/len(final_df.index)
-
 # Apple Example with a hard coded 500 price
 number_of_appl_shares = position_size/500
 for i in range(0, len(final_df.index)):
@@ -81,8 +67,9 @@ for i in range(0, len(final_df.index)):
 final_df
 
 ### WRITER PHASE ### -----------------------------------------------------------------------------------------------------------------------------------------------------
-writer = pd.ExcelWriter('recommended_trades.xlsx', engine='xlsxwriter') # https://github.com/PyCQA/pylint/issues/3060 pylint: disable=abstract-class-instantiated
-final_df.to_excel(writer, 'Recommended Trades', index=False)
+with pd.ExcelWriter('recommended_trades.xlsx') as writer:
+    final_df.to_excel(writer, sheet_name='Recommended Trades', index=False)
+
 background_color = '#0a0a23'
 font_color = '#ffffff'
 
